@@ -1,5 +1,6 @@
 const { FaissStore } = require('@langchain/community/vectorstores/faiss');
 const fs = require('fs');
+const path = require('path');
 
 class VectorStore {
   constructor(dbPath) {
@@ -8,19 +9,20 @@ class VectorStore {
   }
 
   async initialize(embeddings, dimensions) {
+    const indexPath = path.join(this.dbPath, 'faiss.index');
     try {
-      await fs.promises.access(this.dbPath);
+      await fs.promises.access(indexPath);
       this.vectorStore = await FaissStore.load(this.dbPath, embeddings);
       console.log('Vector database loaded successfully');
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.log('Database directory not found, creating new vector database');
+        console.log('Database index not found, creating new vector database');
         await fs.promises.mkdir(this.dbPath, { recursive: true });
         // Pass dummy data to fromTexts to ensure the index is created with the correct dimensions
         this.vectorStore = await FaissStore.fromTexts(
-          ['init'], 
-          [{}], 
-          embeddings, 
+          ['init'],
+          [{}],
+          embeddings,
           {
             dimensions: dimensions,
           }
