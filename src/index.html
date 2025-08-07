@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>图片重复检测工具</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>图片重复检测工具</h1>
+    
+    <div class="control-group">
+      <button id="selectDirBtn">选择图片目录</button>
+      <p id="selectedDir">未选择目录</p>
+    </div>
+    
+    <button id="processBtn" disabled>开始检测重复图片</button>
+    
+    <div id="resultContainer" style="display: none;">
+      <h2>处理结果</h2>
+      <p id="progress"></p>
+      <div id="results"></div>
+    </div>
+  </div>
+  
+  <script src="renderer.js"></script>
+</body>
+</html>
