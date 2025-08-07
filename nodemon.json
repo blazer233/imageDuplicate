@@ -1,5 +1,6 @@
 {
-  "watch": ["src/"],
-  "ext": "js,json,html,css",
-  "exec": "npm start"
-}
+  "watch": ["src"],
+  "ext": "js,html,css",
+  "ignore": ["node_modules", "vector_db"],
+  "exec": "electron ."
+} 

@@ -1,301 +1,551 @@
-// 获取DOM元素
+// 全局变量
+let currentSettings = {};
+let isIndexing = false;
+
+// DOM 元素
 const elements = {
-  // 标签页
-  tabButtons: document.querySelectorAll('.tab-btn'),
-  tabPanes: document.querySelectorAll('.tab-pane'),
-  
-  // 查找相似图片
-  imagePathInput: document.getElementById('image-path'),
-  selectImageBtn: document.getElementById('select-image-btn'),
-  similarLimit: document.getElementById('similar-limit'),
-  findSimilarBtn: document.getElementById('find-similar-btn'),
-  similarResults: document.getElementById('similar-results'),
-  similarResultsGrid: document.getElementById('similar-results-grid'),
-  
-  // 设置
-  defaultImageDirectory: document.getElementById('default-image-directory'),
-  selectDefaultDirectoryBtn: document.getElementById('select-default-directory-btn'),
-  modelSelect: document.getElementById('model-select'),
-  defaultThreshold: document.getElementById('default-threshold'),
-  defaultThresholdValue: document.getElementById('default-threshold-value'),
-  defaultLimit: document.getElementById('default-limit'),
-  saveSettingsBtn: document.getElementById('save-settings-btn'),
-  
-  // 加载动画
-  loadingOverlay: document.getElementById('loading-overlay'),
-  loadingMessage: document.getElementById('loading-message')
+    // 导航
+    navBtns: document.querySelectorAll('.nav-btn'),
+    tabContents: document.querySelectorAll('.tab-content'),
+    
+    // 设置页面
+    model: document.getElementById('model'),
+    similarityThreshold: document.getElementById('similarityThreshold'),
+    similarityValue: document.getElementById('similarityValue'),
+    maxResults: document.getElementById('maxResults'),
+    minGroupSize: document.getElementById('minGroupSize'),
+    saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+    checkServiceBtn: document.getElementById('checkServiceBtn'),
+    resetDbBtn: document.getElementById('resetDbBtn'),
+    systemStatus: document.getElementById('systemStatus'),
+    
+    // 索引页面
+    indexDirectory: document.getElementById('indexDirectory'),
+    selectIndexDirectoryBtn: document.getElementById('selectIndexDirectoryBtn'),
+    startIndexBtn: document.getElementById('startIndexBtn'),
+    stopIndexBtn: document.getElementById('stopIndexBtn'),
+    indexProgress: document.getElementById('indexProgress'),
+    progressFill: document.getElementById('progressFill'),
+    progressText: document.getElementById('progressText'),
+    currentFile: document.getElementById('currentFile'),
+    indexResult: document.getElementById('indexResult'),
+    indexedImages: document.getElementById('indexedImages'),
+    
+    // 搜索页面
+    searchImage: document.getElementById('searchImage'),
+    selectSearchImageBtn: document.getElementById('selectSearchImageBtn'),
+    searchBtn: document.getElementById('searchBtn'),
+    searchResult: document.getElementById('searchResult'),
+    selectedImagePreview: document.getElementById('selectedImagePreview')
 };
 
 // 初始化应用
 async function initializeApp() {
-  try {
-    // 显示加载动画
-    showLoading('正在初始化...');
-    
-    // 加载模型列表
-    const modelsResult = await window.electronAPI.getModels();
-    console.log(modelsResult);
-    if (modelsResult.success) {
-      const { models } = modelsResult;
-      const { modelSelect } = elements;
-      modelSelect.innerHTML = '';
-      models.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
-        modelSelect.appendChild(option);
-      });
-    } else {
-      showError(`加载模型列表失败: ${modelsResult.error}`);
+    try {
+        // 初始化系统
+        const initResult = await window.electronAPI.initializeSystem();
+        if (!initResult.success) {
+            showError('系统初始化失败: ' + initResult.message);
+        }
+        
+        // 加载设置
+        await loadSettings();
+        
+        // 检查系统状态
+        await checkSystemStatus();
+        
+        // 设置事件监听器
+        setupEventListeners();
+        
+        console.log('应用初始化完成');
+    } catch (error) {
+        console.error('应用初始化失败:', error);
+        showError('应用初始化失败: ' + error.message);
     }
-
-    // 加载设置
-    const settings = await window.electronAPI.getSettings();
-    
-    // 应用设置
-    if (settings.defaultImageDirectory) {
-      elements.defaultImageDirectory.value = settings.defaultImageDirectory;
-    }
-    if (settings.model) {
-      elements.modelSelect.value = settings.model;
-    }
-    
-    elements.defaultThreshold.value = settings.similarityThreshold;
-    elements.defaultThresholdValue.textContent = settings.similarityThreshold;
-    
-    elements.similarLimit.value = settings.maxResults;
-    elements.defaultLimit.value = settings.maxResults;
-    
-    // 初始化图像查重器
-    const initResult = await window.electronAPI.initializeFinder();
-    if (!initResult.success) {
-      throw new Error(`初始化失败: ${initResult.error}`);
-    }
-    
-    // 隐藏加载动画
-    hideLoading();
-  } catch (error) {
-    hideLoading();
-    showError(`初始化应用失败: ${error.message}`);
-  }
 }
 
-// 显示加载动画
-function showLoading(message = '正在处理...') {
-  elements.loadingMessage.textContent = message;
-  elements.loadingOverlay.classList.remove('hidden');
-}
-
-// 隐藏加载动画
-function hideLoading() {
-  elements.loadingOverlay.classList.add('hidden');
-}
-
-// 显示错误消息
-function showError(message) {
-  alert(message);
-}
-
-// 标签页切换
-elements.tabButtons.forEach(button => {
-  button.addEventListener('click', () => {
-    // 移除所有标签页的active类
-    elements.tabButtons.forEach(btn => btn.classList.remove('active'));
-    elements.tabPanes.forEach(pane => pane.classList.remove('active'));
+// 设置事件监听器
+function setupEventListeners() {
+    // 导航切换
+    elements.navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            switchTab(tabName);
+        });
+    });
     
-    // 添加当前标签页的active类
-    button.classList.add('active');
-    const tabId = button.dataset.tab;
-    document.getElementById(tabId).classList.add('active');
-  });
-});
-
-// 选择目录
-elements.selectDefaultDirectoryBtn.addEventListener('click', async () => {
-  const directoryPath = await window.electronAPI.selectDirectory();
-  if (directoryPath) {
-    elements.defaultImageDirectory.value = directoryPath;
-  }
-});
-
-// 选择图片
-elements.selectImageBtn.addEventListener('click', async () => {
-  const imagePath = await window.electronAPI.selectImage();
-  if (imagePath) {
-    elements.imagePathInput.value = imagePath;
-    elements.findSimilarBtn.disabled = false;
-  }
-});
-
-// 相似度阈值滑块更新
-
-
-
-
-elements.defaultThreshold.addEventListener('input', () => {
-  elements.defaultThresholdValue.textContent = elements.defaultThreshold.value;
-});
-
-
-
-// 查找相似图片
-elements.findSimilarBtn.addEventListener('click', async () => {
-  const imagePath = elements.imagePathInput.value;
-  if (!imagePath) {
-    showError('请先选择图片');
-    return;
-  }
-  
-  // 获取设置中的默认目录
-  let searchDirectory = '';
-  try {
-    const settings = await window.electronAPI.getSettings();
-    if (settings.defaultImageDirectory) {
-      searchDirectory = settings.defaultImageDirectory;
-    } else {
-      showError('请在设置中配置默认图片目录');
-      return;
-    }
-  } catch (error) {
-    showError(`获取默认目录失败: ${error.message}`);
-    return;
-  }
-  
-  const settings = await window.electronAPI.getSettings();
-  const threshold = parseFloat(settings.similarityThreshold);
-  const limit = parseInt(elements.similarLimit.value);
-  
-  try {
-    showLoading('正在查找相似图片...');
-    const result = await window.electronAPI.findSimilar(imagePath, threshold, limit, searchDirectory);
-    hideLoading();
+    // 设置页面事件
+    elements.similarityThreshold.addEventListener('input', updateSimilarityValue);
+    elements.saveSettingsBtn.addEventListener('click', saveSettings);
+    elements.checkServiceBtn.addEventListener('click', checkService);
+    elements.resetDbBtn.addEventListener('click', resetDatabase);
     
-    if (result.success) {
-      displaySimilarResults(imagePath, result.similarImages);
-    } else {
-      showError(`查找失败: ${result.error}`);
+    // 索引页面事件
+    elements.selectIndexDirectoryBtn.addEventListener('click', selectIndexDirectory);
+    elements.startIndexBtn.addEventListener('click', startIndexing);
+    elements.stopIndexBtn.addEventListener('click', stopIndexing);
+    
+    // 搜索页面事件
+    elements.selectSearchImageBtn.addEventListener('click', selectSearchImage);
+    elements.searchBtn.addEventListener('click', searchSimilarImages);
+    
+
+    
+    // 监听索引进度
+    window.electronAPI.onIndexProgress(handleIndexProgress);
+}
+
+// 切换选项卡
+function switchTab(tabName) {
+    // 移除所有活动状态
+    elements.navBtns.forEach(btn => btn.classList.remove('active'));
+    elements.tabContents.forEach(content => content.classList.remove('active'));
+    
+    // 添加活动状态
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(tabName).classList.add('active');
+}
+
+// 加载设置
+async function loadSettings() {
+    try {
+        const result = await window.electronAPI.loadSettings();
+        if (result.success) {
+            currentSettings = result.settings;
+            
+            // 更新UI
+            // elements.defaultDirectory.value = currentSettings.defaultDirectory || ''; // This line was removed
+            elements.model.value = currentSettings.model || 'llava';
+            elements.similarityThreshold.value = currentSettings.similarityThreshold || 0.8;
+            elements.maxResults.value = currentSettings.maxResults || 10;
+            elements.minGroupSize.value = currentSettings.minGroupSize || 2;
+            
+            // 更新显示值
+            updateSimilarityValue();
+            // updateDuplicateThresholdValue(); // This line was removed
+            
+            console.log('设置加载成功');
+        } else {
+            showError('加载设置失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('加载设置失败:', error);
+        showError('加载设置失败: ' + error.message);
     }
-  } catch (error) {
-    hideLoading();
-    showError(`查找过程出错: ${error.message}`);
-  }
-});
-
-
+}
 
 // 保存设置
-elements.saveSettingsBtn.addEventListener('click', async () => {
-  const settings = {
-    defaultImageDirectory: elements.defaultImageDirectory.value,
-    model: elements.modelSelect.value,
-    similarityThreshold: parseFloat(elements.defaultThreshold.value),
-    maxResults: parseInt(elements.defaultLimit.value)
-  };
-  
-  try {
-    const result = await window.electronAPI.saveSettings(settings);
-    if (result.success) {
-      // 显示加载动画
-      showLoading('正在重新初始化...');
-      
-      // 更新其他页面的设置
-      elements.defaultThreshold.value = settings.similarityThreshold;
-      elements.defaultThresholdValue.textContent = settings.similarityThreshold;
-      elements.defaultLimit.value = settings.maxResults;
-      
-      // 重新初始化图像查重器
-      const initResult = await window.electronAPI.initializeFinder();
-      if (initResult.success) {
-        hideLoading();
-        alert('设置已保存并应用');
-      } else {
-        hideLoading();
-        showError(`重新初始化失败: ${initResult.error}`);
-      }
+async function saveSettings() {
+    try {
+        const settings = {
+            // defaultDirectory: elements.defaultDirectory.value, // This line was removed
+            model: elements.model.value,
+            similarityThreshold: parseFloat(elements.similarityThreshold.value),
+            maxResults: parseInt(elements.maxResults.value),
+            minGroupSize: parseInt(elements.minGroupSize.value)
+        };
+        
+        const result = await window.electronAPI.saveSettings(settings);
+        if (result.success) {
+            currentSettings = settings;
+            showSuccess('设置保存成功');
+        } else {
+            showError('保存设置失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('保存设置失败:', error);
+        showError('保存设置失败: ' + error.message);
     }
-  } catch (error) {
-    hideLoading();
-    showError(`保存设置失败: ${error.message}`);
-  }
-});
-
-// 显示相似图片结果
-function displaySimilarResults(originalImagePath, results) {
-  // 清空结果区域
-  elements.similarResultsGrid.innerHTML = '';
-  
-  // 添加原始图片
-  const originalItem = createResultItem(originalImagePath, 1.0, '原始图片');
-  elements.similarResultsGrid.appendChild(originalItem);
-  
-  // 添加相似图片
-  if (results.length === 0) {
-    const noResults = document.createElement('p');
-    noResults.textContent = '未找到相似图片';
-    elements.similarResultsGrid.appendChild(noResults);
-  } else {
-    results.forEach(result => {
-      const item = createResultItem(result.path, result.score);
-      elements.similarResultsGrid.appendChild(item);
-    });
-  }
-  
-  // 显示结果区域
-  elements.similarResults.classList.remove('hidden');
 }
 
-
-
-// 创建结果项
-function createResultItem(imagePath, score, label = null) {
-  const item = document.createElement('div');
-  item.className = 'result-item';
-  
-  // 图片
-  const img = document.createElement('img');
-  img.src = `file://${imagePath}`;
-  img.alt = pathUtils.basename(imagePath);
-  img.onerror = () => {
-    img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23f0f0f0"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" text-anchor="middle" fill="%23999">图片加载失败</text></svg>';
-  };
-  item.appendChild(img);
-  
-  // 信息
-  const info = document.createElement('div');
-  info.className = 'result-info';
-  
-  // 文件名
-  const fileName = document.createElement('p');
-  fileName.textContent = pathUtils.basename(imagePath);
-  fileName.title = imagePath;
-  info.appendChild(fileName);
-  
-  // 相似度
-  const similarity = document.createElement('p');
-  similarity.className = 'similarity-score';
-  similarity.textContent = label || `相似度: ${(score * 100).toFixed(2)}%`;
-  info.appendChild(similarity);
-  
-  item.appendChild(info);
-  
-  return item;
+// 检查服务
+async function checkService() {
+    try {
+        elements.checkServiceBtn.disabled = true;
+        elements.checkServiceBtn.textContent = '检查中...';
+        
+        const result = await window.electronAPI.checkOllamaService();
+        
+        if (result.success) {
+            if (result.available) {
+                showSuccess('Ollama 服务可用');
+            } else {
+                showWarning('Ollama 服务不可用，请确保已安装并运行 Ollama');
+            }
+        } else {
+            showError('检查服务失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('检查服务失败:', error);
+        showError('检查服务失败: ' + error.message);
+    } finally {
+        elements.checkServiceBtn.disabled = false;
+        elements.checkServiceBtn.textContent = '检查服务';
+    }
 }
 
-// 自定义路径处理函数
-const pathUtils = {
-  basename: (filePath) => {
-    if (!filePath) return '';
-    return filePath.split(/[\\/]/).pop();
-  },
-  
-  // 获取文件扩展名
-  extname: (filePath) => {
-    if (!filePath) return '';
-    const basename = pathUtils.basename(filePath);
-    const dotIndex = basename.lastIndexOf('.');
-    return dotIndex !== -1 ? basename.slice(dotIndex) : '';
-  }
+// 重置数据库
+async function resetDatabase() {
+    if (!confirm('确定要重置数据库吗？此操作将删除所有已索引的图片数据，且不可恢复。')) {
+        return;
+    }
+    
+    try {
+        elements.resetDbBtn.disabled = true;
+        elements.resetDbBtn.textContent = '重置中...';
+        
+        const result = await window.electronAPI.resetDatabase();
+        if (result.success) {
+            showSuccess('数据库重置成功');
+            await checkSystemStatus();
+            await showIndexedImages(); // 在重置后刷新已索引图片
+        } else {
+            showError('重置数据库失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('重置数据库失败:', error);
+        showError('重置数据库失败: ' + error.message);
+    } finally {
+        elements.resetDbBtn.disabled = false;
+        elements.resetDbBtn.textContent = '重置数据库';
+    }
+}
+
+// 检查系统状态
+async function checkSystemStatus() {
+    try {
+        const result = await window.electronAPI.getStats();
+        if (result.success) {
+            const stats = result.stats;
+            updateSystemStatus(stats);
+        } else {
+            updateSystemStatus({ initialized: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('获取系统状态失败:', error);
+        updateSystemStatus({ initialized: false, message: error.message });
+    }
+}
+
+// 更新系统状态显示
+function updateSystemStatus(stats) {
+    let html = '';
+    
+    if (stats.initialized) {
+        html = `
+            <div class="status-item">
+                <span class="status-label">系统状态:</span>
+                <span class="status-value success">已初始化</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">已索引图片:</span>
+                <span class="status-value">${stats.vectorStore?.totalVectors || 0}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">向量维度:</span>
+                <span class="status-value">${stats.vectorStore?.dimension || 0}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">支持格式:</span>
+                <span class="status-value">${stats.supportedFormats?.join(', ') || ''}</span>
+            </div>
+        `;
+    } else {
+        html = `
+            <div class="status-item">
+                <span class="status-label">系统状态:</span>
+                <span class="status-value error">未初始化</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">错误信息:</span>
+                <span class="status-value error">${stats.message || '未知错误'}</span>
+            </div>
+        `;
+    }
+    
+    elements.systemStatus.innerHTML = html;
+}
+
+// 选择索引目录
+async function selectIndexDirectory() {
+    try {
+        const result = await window.electronAPI.selectDirectory();
+        if (result.success) {
+            elements.indexDirectory.value = result.path;
+        } else {
+            showError('选择目录失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('选择目录失败:', error);
+        showError('选择目录失败: ' + error.message);
+    }
+}
+
+// 开始索引
+async function startIndexing() {
+    const directory = elements.indexDirectory.value.trim();
+    if (!directory) {
+        showError('请选择要索引的目录');
+        return;
+    }
+    
+    try {
+        isIndexing = true;
+        elements.startIndexBtn.disabled = true;
+        elements.stopIndexBtn.disabled = false;
+        elements.indexProgress.style.display = 'block';
+        elements.indexResult.innerHTML = '';
+        
+        const result = await window.electronAPI.indexDirectory(directory);
+        
+        if (result.success) {
+            showSuccess(`索引完成: ${result.message}`);
+            await checkSystemStatus();
+            await showIndexedImages(); // 在索引后刷新已索引图片
+        } else {
+            showError('索引失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('索引失败:', error);
+        showError('索引失败: ' + error.message);
+    } finally {
+        isIndexing = false;
+        elements.startIndexBtn.disabled = false;
+        elements.stopIndexBtn.disabled = true;
+        elements.indexProgress.style.display = 'none';
+    }
+}
+
+// 停止索引
+function stopIndexing() {
+    isIndexing = false;
+    elements.startIndexBtn.disabled = false;
+    elements.stopIndexBtn.disabled = true;
+    elements.indexProgress.style.display = 'none';
+    showWarning('索引已停止');
+}
+
+// 处理索引进度
+function handleIndexProgress(data) {
+    if (!isIndexing) return;
+    
+    elements.progressFill.style.width = data.percentage + '%';
+    elements.progressText.textContent = `进度: ${data.current}/${data.total} (${data.percentage}%)`;
+    elements.currentFile.textContent = `当前文件: ${data.filePath}`;
+}
+
+// 选择搜索图片
+async function selectSearchImage() {
+    try {
+        const result = await window.electronAPI.selectImage();
+        if (result.success) {
+            elements.searchImage.value = result.path;
+            showSelectedImagePreview(result.path);
+        } else {
+            showError('选择图片失败: ' + result.message);
+            elements.selectedImagePreview.innerHTML = '';
+        }
+    } catch (error) {
+        console.error('选择图片失败:', error);
+        showError('选择图片失败: ' + error.message);
+        elements.selectedImagePreview.innerHTML = '';
+    }
+}
+
+function showSelectedImagePreview(imagePath) {
+    if (!imagePath) {
+        elements.selectedImagePreview.innerHTML = '';
+        return;
+    }
+    const ext = imagePath.split('.').pop().toLowerCase();
+    if (["jpg","jpeg","png","gif","webp"].includes(ext)) {
+        elements.selectedImagePreview.innerHTML = `<img src="file://${imagePath}" alt="预览" style="max-width:200px;max-height:120px;border-radius:8px;box-shadow:none;">`;
+    } else {
+        elements.selectedImagePreview.innerHTML = '<span style="color:#888;">不支持预览</span>';
+    }
+}
+
+// 搜索相似图片
+async function searchSimilarImages() {
+    const imagePath = elements.searchImage.value.trim();
+    if (!imagePath) {
+        showError('请选择要搜索的图片');
+        return;
+    }
+    try {
+        elements.searchBtn.disabled = true;
+        elements.searchBtn.textContent = '搜索中...';
+        // 直接用设置页的参数
+        const maxResults = parseInt(elements.maxResults.value);
+        const threshold = parseFloat(elements.similarityThreshold.value);
+        const result = await window.electronAPI.findSimilarImages(imagePath, maxResults, threshold);
+        if (result.success) {
+            displaySearchResults(result);
+        } else {
+            showError('搜索失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('搜索失败:', error);
+        showError('搜索失败: ' + error.message);
+    } finally {
+        elements.searchBtn.disabled = false;
+        elements.searchBtn.textContent = '查找相似图片';
+    }
+}
+
+// 显示搜索结果
+function displaySearchResults(result) {
+    let html = `<h3>搜索结果 (${result.results.length} 个结果)</h3>`;
+    if (result.results.length === 0) {
+        html += '<p>未找到相似的图片</p>';
+    } else {
+        result.results.forEach((item, index) => {
+            const ext = (item.metadata.filename || '').split('.').pop().toLowerCase();
+            let imgTag = '';
+            if (["jpg","jpeg","png","gif","webp"].includes(ext)) {
+                imgTag = `<img src="file://${item.metadata.path}" alt="缩略图" style="max-width:80px;max-height:80px;border-radius:6px;vertical-align:middle;margin-right:12px;box-shadow:none;">`;
+            }
+            html += `
+                <div class="result-item" style="display:flex;align-items:center;gap:16px;">
+                    ${imgTag}
+                    <div style="flex:1;">
+                        <h4 style="margin-bottom:4px;">${item.metadata.filename}</h4>
+                        <p>路径: ${item.metadata.path}</p>
+                        <p>大小: ${formatFileSize(item.metadata.size)}</p>
+                        <p>尺寸: ${item.metadata.width} × ${item.metadata.height}</p>
+                        <p class="similarity">相似度: ${(item.similarity * 100).toFixed(2)}%</p>
+                        <div class="actions">
+                            <button onclick="openFile('${item.metadata.path}')">打开文件</button>
+                            <button onclick="openFileLocation('${item.metadata.path}')">显示位置</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    elements.searchResult.innerHTML = html;
+}
+
+// 展示已索引图片
+async function showIndexedImages() {
+    try {
+        const res = await window.electronAPI.getIndexedImages();
+        if (res.success && res.images.length > 0) {
+            let html = `<div style="font-size:0.95em;">共${res.images.length}张图片</div>`;
+            res.images.forEach(item => {
+                const ext = (item.filename || '').split('.').pop().toLowerCase();
+                let imgTag = '';
+                if (["jpg","jpeg","png","gif","webp"].includes(ext)) {
+                    imgTag = `<img src="file://${item.path}" alt="缩略图" style="max-width:60px;max-height:60px;border-radius:6px;vertical-align:middle;margin-right:12px;box-shadow:none;">`;
+                }
+                html += `<div class="result-item" style="display:flex;align-items:center;gap:16px;">
+                    ${imgTag}
+                    <div style="flex:1;">
+                        <h4 style="margin-bottom:4px;">${item.filename}</h4>
+                        <p>路径: ${item.path}</p>
+                        <p>大小: ${formatFileSize(item.size)}</p>
+                        <p>尺寸: ${item.width} × ${item.height}</p>
+                    </div>
+                </div>`;
+            });
+            elements.indexedImages.innerHTML = html;
+        } else {
+            elements.indexedImages.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
+        }
+    } catch (e) {
+        elements.indexedImages.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
+    }
+}
+
+// 工具函数
+function updateSimilarityValue() {
+    elements.similarityValue.textContent = elements.similarityThreshold.value;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showSuccess(message) {
+    showMessage(message, 'success');
+}
+
+function showError(message) {
+    showMessage(message, 'error');
+}
+
+function showWarning(message) {
+    showMessage(message, 'warning');
+}
+
+function showMessage(message, type = 'info') {
+    // 创建消息元素
+    const messageEl = document.createElement('div');
+    messageEl.className = `message message-${type}`;
+    messageEl.textContent = message;
+    messageEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        max-width: 400px;
+        word-wrap: break-word;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    `;
+    
+    // 设置背景色
+    switch (type) {
+        case 'success':
+            messageEl.style.backgroundColor = '#28a745';
+            break;
+        case 'error':
+            messageEl.style.backgroundColor = '#dc3545';
+            break;
+        case 'warning':
+            messageEl.style.backgroundColor = '#ffc107';
+            messageEl.style.color = '#333';
+            break;
+        default:
+            messageEl.style.backgroundColor = '#17a2b8';
+    }
+    
+    document.body.appendChild(messageEl);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (messageEl.parentNode) {
+            messageEl.parentNode.removeChild(messageEl);
+        }
+    }, 3000);
+}
+
+// 全局函数（供HTML调用）
+window.openFile = async function(filePath) {
+    try {
+        await window.electronAPI.openFile(filePath);
+    } catch (error) {
+        showError('打开文件失败: ' + error.message);
+    }
 };
 
-// 初始化应用
-document.addEventListener('DOMContentLoaded', initializeApp);
+window.openFileLocation = async function(filePath) {
+    try {
+        await window.electronAPI.openFileLocation(filePath);
+    } catch (error) {
+        showError('打开文件位置失败: ' + error.message);
+    }
+};
+
+// 启动应用
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    showIndexedImages();
+}); 

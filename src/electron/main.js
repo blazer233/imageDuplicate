@@ -1,301 +1,302 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
-const fs = require('fs');
+const Store = require('electron-store');
 const ImageDuplicateFinder = require('../imageDuplicateFinder');
+const fs = require('fs');
 
+// 创建配置存储
+const store = new Store();
 
-// 使用动态导入electron-store
-let store;
-let storeInitialized = false;
+// 创建图片重复查找器实例
+const imageDuplicateFinder = new ImageDuplicateFinder();
 
-// 初始化store的Promise
-const storeInitPromise = (async () => {
-  try {
-    const { default: Store } = await import('electron-store');
-    store = new Store();
-    storeInitialized = true;
-    console.log('配置存储初始化成功');
-  } catch (error) {
-    console.error('配置存储初始化失败:', error);
-  }
-})();
-
-// 获取store的函数，确保store已初始化
-async function getStore() {
-  if (!storeInitialized) {
-    await storeInitPromise;
-  }
-  return store;
-}
-
-// 全局变量，保存主窗口引用
 let mainWindow;
 
-// 图像查重器实例
-let imageFinder;
-
-/**
- * 创建主窗口
- */
 function createWindow() {
-  // 创建浏览器窗口
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
-    },
-  });
+    // 创建浏览器窗口
+    mainWindow = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
+        },
+        icon: path.join(__dirname, 'assets', 'icon.png'), // 如果有图标的话
+        title: '图片重复查找器'
+    });
 
-  // 加载应用的主页面
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+    // 加载应用的 index.html
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  // 初始化图像查重器（稍后会在initialize-finder中配置）
-  imageFinder = null;
+    // 打开开发者工具（开发模式）
+    if (process.env.NODE_ENV === 'development') {
+        mainWindow.webContents.openDevTools();
+    }
 
-  // 开发环境下打开开发者工具
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools();
-  }
+    // 当窗口关闭时触发
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
 }
 
-/**
- * 应用准备就绪时创建窗口
- */
+// 当 Electron 完成初始化并准备创建浏览器窗口时调用此方法
 app.whenReady().then(() => {
-  createWindow();
+    createWindow();
 
-  // 在macOS上，当所有窗口都关闭时，通常会重新创建一个窗口
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+    app.on('activate', () => {
+        // 在 macOS 上，当点击 dock 图标并且没有其他窗口打开时，
+        // 通常在应用程序中重新创建一个窗口。
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
 });
 
-/**
- * 当所有窗口关闭时退出应用（Windows & Linux）
- */
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
+// 当所有窗口都关闭时退出应用
+app.on('window-all-closed', () => {
+    // 在 macOS 上，除非用户用 Cmd + Q 确定地退出，
+    // 否则绝大部分应用及其菜单栏会保持激活。
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
 });
 
-// IPC通信处理
+// IPC 处理器
 
-/**
- * 选择图片目录
- */
+// 初始化系统
+ipcMain.handle('initialize-system', async () => {
+    try {
+        await imageDuplicateFinder.initialize();
+        return { success: true, message: '系统初始化成功' };
+    } catch (error) {
+        return { success: false, message: `初始化失败: ${error.message}` };
+    }
+});
+
+// 检查 Ollama 服务
+ipcMain.handle('check-ollama-service', async () => {
+    try {
+        const isAvailable = await imageDuplicateFinder.checkOllamaService();
+        return { 
+            success: true, 
+            available: isAvailable,
+            message: isAvailable ? 'Ollama 服务可用' : 'Ollama 服务不可用'
+        };
+    } catch (error) {
+        return { 
+            success: false, 
+            available: false,
+            message: `检查服务失败: ${error.message}` 
+        };
+    }
+});
+
+// 选择目录
 ipcMain.handle('select-directory', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
-  });
+    try {
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openDirectory'],
+            title: '选择图片目录'
+        });
 
-  if (!result.canceled) {
-    // 保存选择的目录到配置中
-    const storeInstance = await getStore();
-    storeInstance.set('lastImageDirectory', result.filePaths[0]);
-    return result.filePaths[0];
-  }
-  return null;
+        if (!result.canceled && result.filePaths.length > 0) {
+            return { 
+                success: true, 
+                path: result.filePaths[0] 
+            };
+        } else {
+            return { 
+                success: false, 
+                message: '未选择目录' 
+            };
+        }
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `选择目录失败: ${error.message}` 
+        };
+    }
 });
 
-/**
- * 选择单个图片文件
- */
+// 选择图片文件
 ipcMain.handle('select-image', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [
-      { name: '图片', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] },
-    ],
-  });
-
-  if (!result.canceled) {
-    return result.filePaths[0];
-  }
-  return null;
-});
-
-/**
- * 初始化图像查重器
- */
-ipcMain.handle('initialize-finder', async () => {
-  try {
-    // 获取配置
-    const storeInstance = await getStore();
-    const config = {
-      baseUrl: 'http://localhost:11434',
-      model: storeInstance.get('model', 'llava:latest'), // Add this line
-      defaultImageDirectory: storeInstance.get('defaultImageDirectory', ''),
-    };
-
-    // 创建图像查重器实例
-    imageFinder = new ImageDuplicateFinder(config);
-
-    // 初始化
-    await imageFinder.initialize();
-    return { success: true };
-  } catch (error) {
-    console.error('初始化失败:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * 索引目录中的图片
- */
-ipcMain.handle('index-directory', async (event, directoryPath) => {
-  try {
-    // 检查目录是否存在
-    if (!fs.existsSync(directoryPath)) {
-      return { success: false, error: '目录不存在' };
-    }
-
-    // 索引目录
-    const result = await imageFinder.indexDirectory(directoryPath);
-    return { success: true, count: result.length };
-  } catch (error) {
-    console.error('索引目录失败:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * 查找相似图片
- */
-ipcMain.handle(
-  'find-similar',
-  async (event, imagePath, threshold = 0.8, limit = 10, directoryPath) => {
     try {
-      // 检查文件是否存在
-      if (!fs.existsSync(imagePath)) {
-        return { success: false, error: '图片文件不存在' };
-      }
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile'],
+            filters: [
+                { name: '图片文件', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }
+            ],
+            title: '选择图片文件'
+        });
 
-      // 检查目录是否存在
-      if (directoryPath && !fs.existsSync(directoryPath)) {
-        return { success: false, error: '搜索目录不存在' };
-      }
-
-      // 如果提供了目录，先索引该目录
-      if (directoryPath) {
-        console.log(`索引目录: ${directoryPath}`);
-        await imageFinder.indexDirectory(directoryPath);
-      }
-
-      // 查找相似图片
-      const similarImages = await imageFinder.findSimilarImages(
-        imagePath,
-        limit,
-        threshold
-      );
-      return { success: true, similarImages };
+        if (!result.canceled && result.filePaths.length > 0) {
+            return { 
+                success: true, 
+                path: result.filePaths[0] 
+            };
+        } else {
+            return { 
+                success: false, 
+                message: '未选择图片' 
+            };
+        }
     } catch (error) {
-      console.error('查找相似图片失败:', error);
-      return { success: false, error: error.message };
+        return { 
+            success: false, 
+            message: `选择图片失败: ${error.message}` 
+        };
     }
-  }
-);
+});
 
-/**
- * 查找所有重复图片
- */
-ipcMain.handle(
-  'find-duplicates',
-  async (event, directoryPath, threshold = 0.8) => {
+// 索引目录
+ipcMain.handle('index-directory', async (event, directory) => {
     try {
-      // 检查目录是否存在
-      if (!fs.existsSync(directoryPath)) {
-        return { success: false, error: '目录不存在' };
-      }
+        const result = await imageDuplicateFinder.indexDirectory(directory, (current, total, filePath) => {
+            // 发送进度更新
+            mainWindow.webContents.send('index-progress', {
+                current,
+                total,
+                filePath,
+                percentage: Math.round((current / total) * 100)
+            });
+        });
 
-      // 查找所有重复图片
-      const duplicateGroups = await imageFinder.findAllDuplicates(
-        directoryPath,
-        threshold
-      );
-      return { success: true, duplicateGroups };
+        return result;
     } catch (error) {
-      console.error('查找重复图片失败:', error);
-      return { success: false, error: error.message };
+        return { 
+            success: false, 
+            message: `索引失败: ${error.message}` 
+        };
     }
-  }
-);
-
-/**
- * 删除图片
- */
-ipcMain.handle('remove-image', async (event, imagePath) => {
-  try {
-    // 检查文件是否存在
-    if (!fs.existsSync(imagePath)) {
-      return { success: false, error: '图片文件不存在' };
-    }
-
-    // 从向量存储中删除图片
-    const success = await imageFinder.removeImage(imagePath);
-    return { success };
-  } catch (error) {
-    console.error('删除图片失败:', error);
-    return { success: false, error: error.message };
-  }
 });
 
-/**
- * 获取上次使用的图片目录
- */
-ipcMain.handle('get-last-directory', async () => {
-  const storeInstance = await getStore();
-  return storeInstance.get('lastImageDirectory', '');
+// 查找相似图片
+ipcMain.handle('find-similar-images', async (event, imagePath, maxResults, similarityThreshold) => {
+    try {
+        const result = await imageDuplicateFinder.findSimilarImages(
+            imagePath, 
+            maxResults || 10, 
+            similarityThreshold || 0.8
+        );
+        return result;
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `查找失败: ${error.message}` 
+        };
+    }
 });
 
-/**
- * 保存配置
- */
+
+
+// 获取系统统计信息
+ipcMain.handle('get-stats', async () => {
+    try {
+        const stats = imageDuplicateFinder.getStats();
+        return { success: true, stats };
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `获取统计信息失败: ${error.message}` 
+        };
+    }
+});
+
+// 重置数据库
+ipcMain.handle('reset-database', async () => {
+    try {
+        const result = await imageDuplicateFinder.resetDatabase();
+        return result;
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `重置数据库失败: ${error.message}` 
+        };
+    }
+});
+
+// 验证图片文件
+ipcMain.handle('validate-image', async (event, imagePath) => {
+    try {
+        const result = await imageDuplicateFinder.validateImage(imagePath);
+        return result;
+    } catch (error) {
+        return { 
+            valid: false, 
+            message: `验证失败: ${error.message}` 
+        };
+    }
+});
+
+// 保存设置
 ipcMain.handle('save-settings', async (event, settings) => {
-  const storeInstance = await getStore();
-  const oldDirectory = storeInstance.get('defaultImageDirectory');
-
-  // Check if the directory has changed
-  if (
-    settings.defaultImageDirectory &&
-    oldDirectory !== settings.defaultImageDirectory
-  ) {
-    console.log('Default directory changed. Resetting vector database...');
-    if (imageFinder) {
-      await imageFinder.reset(); // This method needs to be created
+    try {
+        store.set('settings', settings);
+        return { success: true, message: '设置保存成功' };
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `保存设置失败: ${error.message}` 
+        };
     }
-  }
-
-  for (const [key, value] of Object.entries(settings)) {
-    storeInstance.set(key, value);
-  }
-  return { success: true };
 });
 
-ipcMain.handle('get-models', async () => {
-  try {
-    const { default: fetch } = await import('node-fetch');
-    const response = await fetch('http://127.0.0.1:11434/api/tags');
-    console.log(response);
-    const data = await response.json();
-    const models = data.models.map(m => m.name);
-    return { success: true, models };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+// 加载设置
+ipcMain.handle('load-settings', async () => {
+    try {
+        const settings = store.get('settings', {
+            defaultDirectory: '',
+            model: 'llava',
+            similarityThreshold: 0.8,
+            maxResults: 10,
+            minGroupSize: 2
+        });
+        return { success: true, settings };
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `加载设置失败: ${error.message}` 
+        };
+    }
 });
 
-/**
- * 获取配置
- */
-ipcMain.handle('get-settings', async () => {
-  const storeInstance = await getStore();
-  return {
-    lastImageDirectory: storeInstance.get('lastImageDirectory', ''),
-    similarityThreshold: storeInstance.get('similarityThreshold', 0.8),
-    maxResults: storeInstance.get('maxResults', 10),
-    defaultImageDirectory: storeInstance.get('defaultImageDirectory', ''),
-    model: storeInstance.get('model', 'llava:latest'), // Add this line
-  };
+// 打开文件位置
+ipcMain.handle('open-file-location', async (event, filePath) => {
+    try {
+        await shell.showItemInFolder(filePath);
+        return { success: true };
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `打开文件位置失败: ${error.message}` 
+        };
+    }
 });
+
+// 打开文件
+ipcMain.handle('open-file', async (event, filePath) => {
+    try {
+        await shell.openPath(filePath);
+        return { success: true };
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `打开文件失败: ${error.message}` 
+        };
+    }
+}); 
+
+ipcMain.handle('get-indexed-images', async () => {
+    try {
+        const metaPath = path.join(__dirname, '../../vector_db/metadata.json');
+        if (fs.existsSync(metaPath)) {
+            const data = fs.readFileSync(metaPath, 'utf-8');
+            return { success: true, images: JSON.parse(data) };
+        } else {
+            return { success: true, images: [] };
+        }
+    } catch (e) {
+        return { success: false, message: e.message };
+    }
+}); 

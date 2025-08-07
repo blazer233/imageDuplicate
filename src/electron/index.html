@@ -1,101 +1,112 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>图片重复查找器</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片重复查找器</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>图片重复查找器</h1>
-      <p>基于大模型的图片重复查找系统</p>
-    </header>
+    <div class="container">
+        <header class="header">
+            <h1>图片重复查找器</h1>
+            <p>基于大模型的智能图片重复查找系统</p>
+        </header>
 
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="find-similar">查找相似图片</button>
-      <button class="tab-btn" data-tab="settings">设置</button>
-    </div>
+        <nav class="nav">
+            <button class="nav-btn active" data-tab="settings">设置</button>
+            <button class="nav-btn" data-tab="index">索引图片</button>
+            <button class="nav-btn" data-tab="search">查找相似图片</button>
+        </nav>
 
-    <div class="tab-content">
-      <!-- 查找相似图片 -->
-      <div class="tab-pane active" id="find-similar">
-        <div class="card">
-          <h2>查找相似图片</h2>
-          <p>上传一张图片，查找与之相似的图片</p>
-          
-          <div class="form-group">
-            <label for="image-path">选择图片：</label>
-            <div class="input-group">
-              <input type="text" id="image-path" readonly>
-              <button id="select-image-btn">浏览...</button>
+        <main class="main">
+            <!-- 设置选项卡 -->
+            <div id="settings" class="tab-content active">
+                <div class="card">
+                    <h2>系统设置</h2>
+                    <div class="form-group">
+                        <label for="model">模型选择:</label>
+                        <select id="model">
+                            <option value="llava">LLaVA</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="similarityThreshold">相似度阈值:</label>
+                        <input type="range" id="similarityThreshold" min="0.1" max="1.0" step="0.1" value="0.8">
+                        <span id="similarityValue">0.8</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="maxResults">最大结果数:</label>
+                        <input type="number" id="maxResults" min="1" max="100" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="minGroupSize">最小组大小:</label>
+                        <input type="number" id="minGroupSize" min="2" max="20" value="2">
+                    </div>
+                    <div class="button-group">
+                        <button type="button" id="saveSettingsBtn">保存设置</button>
+                        <button type="button" id="checkServiceBtn">检查服务</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>系统状态</h2>
+                    <div id="systemStatus">
+                        <p>正在检查系统状态...</p>
+                    </div>
+                </div>
             </div>
-          </div>
-          
-          
-          
-          <div class="form-group">
-            <label for="similar-limit">最大结果数：</label>
-            <input type="number" id="similar-limit" min="1" max="100" value="10">
-          </div>
-          
-          <div class="form-actions">
-            <button id="find-similar-btn" class="primary-btn" disabled>查找相似图片</button>
-          </div>
-          
-          <div id="similar-results" class="results-container hidden">
-            <h3>查找结果</h3>
-            <div class="results-grid" id="similar-results-grid"></div>
-          </div>
-        </div>
-      </div>
-      
 
-      <!-- 设置 -->
-      <div class="tab-pane" id="settings">
-        <div class="card">
-          <h2>设置</h2>
-          
-          <div class="form-group">
-            <label for="default-image-directory">默认图片目录：</label>
-            <div class="input-group">
-              <input type="text" id="default-image-directory" readonly>
-              <button id="select-default-directory-btn">浏览...</button>
+            <!-- 索引图片选项卡 -->
+            <div id="index" class="tab-content">
+                <div class="card">
+                    <h2>索引图片</h2>
+                    <div class="form-group">
+                        <label for="indexDirectory">选择要索引的目录:</label>
+                        <div class="input-group">
+                            <input type="text" id="indexDirectory" placeholder="选择图片目录">
+                            <button type="button" id="selectIndexDirectoryBtn">浏览...</button>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" id="startIndexBtn">开始索引</button>
+                        <button type="button" id="stopIndexBtn" disabled>停止索引</button>
+                        <button type="button" id="resetDbBtn" class="danger">重置数据库</button>
+                    </div>
+                    <div id="indexProgress" class="progress-container" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="progressText">准备中...</p>
+                        <p id="currentFile">当前文件: -</p>
+                    </div>
+                    <div id="indexResult" class="result-container"></div>
+                </div>
+                <div class="card">
+                    <h2>已索引图片</h2>
+                    <div id="indexedImages" class="result-container"></div>
+                </div>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label for="model-select">选择模型：</label>
-            <select id="model-select"></select>
-          </div>
-          
-
-          
-          <div class="form-group">
-            <label for="default-threshold">默认相似度阈值：</label>
-            <input type="range" id="default-threshold" min="0.1" max="1" step="0.05" value="0.8">
-            <span id="default-threshold-value">0.8</span>
-          </div>
-          
-          <div class="form-group">
-            <label for="default-limit">默认最大结果数：</label>
-            <input type="number" id="default-limit" min="1" max="100" value="10">
-          </div>
-          
-          <div class="form-actions">
-            <button id="save-settings-btn" class="primary-btn">保存设置</button>
-          </div>
-        </div>
-      </div>
+            <!-- 查找相似图片选项卡 -->
+            <div id="search" class="tab-content">
+                <div class="card">
+                    <h2>查找相似图片</h2>
+                    <div class="form-group">
+                        <label for="searchImage">选择查询图片:</label>
+                        <div class="input-group">
+                            <input type="text" id="searchImage" placeholder="选择图片文件">
+                            <button type="button" id="selectSearchImageBtn">浏览...</button>
+                        </div>
+                    </div>
+                    <div id="selectedImagePreview" style="margin-bottom: 20px;"></div>
+                    <div class="button-group">
+                        <button type="button" id="searchBtn">查找相似图片</button>
+                    </div>
+                    <div id="searchResult" class="result-container"></div>
+                </div>
+            </div>
+        </main>
     </div>
-  </div>
-
-  <div id="loading-overlay" class="hidden">
-    <div class="spinner"></div>
-    <p id="loading-message">正在处理...</p>
-  </div>
-
-  <script src="renderer.js"></script>
+    <script src="renderer.js"></script>
 </body>
-</html>
+</html> 

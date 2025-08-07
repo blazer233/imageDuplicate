@@ -1,65 +1,57 @@
 {
   "name": "image-duplicate-finder",
   "version": "1.0.0",
-  "description": "基于大模型的图片重复查找系统，利用LLaVA模型提取图片特征向量，并使用FAISS向量数据库进行高效相似度搜索",
+  "description": "基于大模型的图片重复查找系统",
   "main": "src/electron/main.js",
   "scripts": {
     "start": "electron .",
-    "start:dev": "nodemon",
-    "build": "electron-builder"
+    "start:dev": "nodemon --watch src --exec \"electron .\"",
+    "build": "electron-builder",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
+    "electron",
     "image",
     "duplicate",
     "finder",
     "llava",
     "faiss",
-    "vector",
-    "similarity",
-    "ai",
-    "machine-learning"
+    "ollama"
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "@langchain/community": "^0.0.15",
-    "@langchain/ollama": "^0.2.3",
-    "electron-store": "^10.1.0",
-    "faiss-node": "^0.5.1",
-    "image-hash": "^5.3.2",
-    "langchain": "^0.0.200",
-    "node-fetch": "^3.3.2",
-    "ollama": "^0.5.16",
-    "ollama-node": "^0.1.27",
-    "sharp": "^0.33.0"
-  },
   "devDependencies": {
-    "electron": "^28.3.3",
-    "electron-builder": "^24.13.3",
-    "nodemon": "^3.1.10"
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "nodemon": "^3.0.2"
   },
-  "engines": {
-    "node": ">=14.0.0"
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "faiss-node": "^0.5.0",
+    "sharp": "^0.33.0",
+    "langchain": "^0.1.0",
+    "@langchain/community": "^0.0.20",
+    "fs-extra": "^11.2.0",
+    "path": "^0.12.7"
   },
   "build": {
-    "appId": "com.imageduplicate.finder",
+    "appId": "com.imageduplicatefinder.app",
     "productName": "图片重复查找器",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*"
+    ],
     "mac": {
       "category": "public.app-category.utilities"
     },
     "win": {
-      "target": [
-        "nsis"
-      ]
+      "target": "nsis"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ]
-    },
-    "directories": {
-      "output": "dist"
+      "target": "AppImage"
     }
   }
-}
+} 
