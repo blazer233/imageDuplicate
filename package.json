@@ -1,0 +1,62 @@
+{
+  "name": "image-duplicate-finder",
+  "version": "1.0.0",
+  "description": "基于大模型的图片重复查找系统，利用LLaVA模型提取图片特征向量，并使用FAISS向量数据库进行高效相似度搜索",
+  "main": "src/electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "image",
+    "duplicate",
+    "finder",
+    "llava",
+    "faiss",
+    "vector",
+    "similarity",
+    "ai",
+    "machine-learning"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@langchain/community": "^0.0.15",
+    "@langchain/ollama": "^0.2.3",
+    "electron-store": "^10.1.0",
+    "faiss-node": "^0.5.1",
+    "langchain": "^0.0.200",
+    "node-fetch": "^3.3.2",
+    "ollama": "^0.5.16",
+    "ollama-node": "^0.1.27",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "build": {
+    "appId": "com.imageduplicate.finder",
+    "productName": "图片重复查找器",
+    "mac": {
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "directories": {
+      "output": "dist"
+    }
+  }
+}
