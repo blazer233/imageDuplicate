@@ -1,6 +1,5 @@
 const fs = require('fs-extra');
 const path = require('path');
-const faiss = require('faiss-node');
 
 class VectorStore {
   constructor(dbPath = './vector_db') {
@@ -9,8 +8,7 @@ class VectorStore {
     this.metadataPath = path.join(dbPath, 'metadata.json');
     this.index = null;
     this.metadata = [];
-    this.dimension = 4096; // LLaVA模型的默认维度
-    this.faissIndex = null;
+    this.dimension = 512; // clip-vit-base-patch16 dimension
   }
 
   async initialize() {
@@ -18,26 +16,10 @@ class VectorStore {
       await fs.ensureDir(this.dbPath);
       await this.loadIndex();
       await this.loadMetadata();
-      await this.buildFaissIndex();
       console.log('向量数据库初始化完成');
     } catch (error) {
       console.error('初始化向量数据库失败:', error);
       throw error;
-    }
-  }
-
-  async buildFaissIndex() {
-    if (this.index && this.index.vectors.length > 0) {
-      try {
-        this.faissIndex = new faiss.IndexFlatL2(this.dimension);
-        const vectors = this.index.vectors.map(v => Float32Array.from(v));
-        this.faissIndex.add(vectors);
-      } catch (e) {
-        this.faissIndex = null;
-        console.error('FAISS索引构建失败:', e);
-      }
-    } else {
-      this.faissIndex = null;
     }
   }
 
@@ -135,7 +117,6 @@ class VectorStore {
       }
       await this.saveIndex();
       await this.saveMetadata();
-      await this.buildFaissIndex();
       console.log(`成功添加 ${vectors.length} 个向量`);
     } catch (error) {
       console.error('批量添加向量失败:', error);
@@ -143,36 +124,42 @@ class VectorStore {
     }
   }
 
-  async searchSimilar(queryVector, k = 10, threshold = 0.8) {
+  cosineSimilarity(a, b) {
+    let dot = 0,
+      normA = 0,
+      normB = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+
+  async searchSimilar(queryVector, k = 10) {
     try {
-      if (!this.faissIndex || !this.index.vectors.length) {
+      if (!this.index || !this.index.vectors.length) {
         return [];
       }
-      const query = Float32Array.from(queryVector);
-      const { distances, labels } = this.faissIndex.search(
-        [query],
-        Math.max(k, this.index.vectors.length)
-      );
+
       const results = [];
-      for (let i = 0; i < labels[0].length; i++) {
-        const idx = labels[0][i];
-        if (idx < 0) continue;
-        const distance = distances[0][i];
-        const similarity = 1 / (1 + distance);
-        if (similarity >= threshold) {
-          results.push({
-            id: idx,
-            distance,
-            similarity,
-            metadata: this.metadata[idx],
-          });
-        }
+      for (let i = 0; i < this.index.vectors.length; i++) {
+        const similarity = this.cosineSimilarity(
+          queryVector,
+          this.index.vectors[i]
+        );
+        results.push({
+          id: i,
+          similarity,
+          metadata: this.metadata[i],
+        });
       }
+
       // 按相似度排序
       results.sort((a, b) => b.similarity - a.similarity);
       return results.slice(0, k);
     } catch (error) {
-      console.error('FAISS搜索相似向量失败:', error);
+      console.error('搜索相似向量失败:', error);
       throw error;
     }
   }
@@ -181,7 +168,6 @@ class VectorStore {
     try {
       this.index.vectors = [];
       this.metadata = [];
-      this.faissIndex = null;
       if (await fs.pathExists(this.indexPath)) {
         await fs.remove(this.indexPath);
       }
@@ -199,12 +185,36 @@ class VectorStore {
     return this.index.vectors.length === 0;
   }
 
-  getStats() {
+  async getStats() {
+    let indexSize = 0;
+    let metadataSize = 0;
+    let lastModified = null;
+
+    try {
+      if (await fs.pathExists(this.indexPath)) {
+        const stats = await fs.stat(this.indexPath);
+        indexSize = stats.size;
+        lastModified = stats.mtime;
+      }
+      if (await fs.pathExists(this.metadataPath)) {
+        const stats = await fs.stat(this.metadataPath);
+        metadataSize = stats.size;
+        if (stats.mtime > lastModified) {
+          lastModified = stats.mtime;
+        }
+      }
+    } catch (error) {
+      console.error('获取数据库文件统计信息失败:', error);
+    }
+
     return {
       totalVectors: this.index.vectors.length,
       totalMetadata: this.metadata.length,
       dimension: this.dimension,
       dbPath: this.dbPath,
+      indexSize,
+      metadataSize,
+      lastModified,
     };
   }
 }

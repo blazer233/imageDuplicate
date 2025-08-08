@@ -9,13 +9,13 @@ const elements = {
     tabContents: document.querySelectorAll('.tab-content'),
     
     // 设置页面
-    model: document.getElementById('model'),
+    
     similarityThreshold: document.getElementById('similarityThreshold'),
     similarityValue: document.getElementById('similarityValue'),
     maxResults: document.getElementById('maxResults'),
-    minGroupSize: document.getElementById('minGroupSize'),
+    
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
-    checkServiceBtn: document.getElementById('checkServiceBtn'),
+    
     resetDbBtn: document.getElementById('resetDbBtn'),
     systemStatus: document.getElementById('systemStatus'),
     
@@ -30,6 +30,7 @@ const elements = {
     currentFile: document.getElementById('currentFile'),
     indexResult: document.getElementById('indexResult'),
     indexedImages: document.getElementById('indexedImages'),
+    indexedImagesList: document.getElementById('indexedImagesList'),
     
     // 搜索页面
     searchImage: document.getElementById('searchImage'),
@@ -77,7 +78,7 @@ function setupEventListeners() {
     // 设置页面事件
     elements.similarityThreshold.addEventListener('input', updateSimilarityValue);
     elements.saveSettingsBtn.addEventListener('click', saveSettings);
-    elements.checkServiceBtn.addEventListener('click', checkService);
+    
     elements.resetDbBtn.addEventListener('click', resetDatabase);
     
     // 索引页面事件
@@ -104,6 +105,10 @@ function switchTab(tabName) {
     // 添加活动状态
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(tabName).classList.add('active');
+
+    if (tabName === 'indexed-list') {
+        showIndexedImages();
+    }
 }
 
 // 加载设置
@@ -115,10 +120,10 @@ async function loadSettings() {
             
             // 更新UI
             // elements.defaultDirectory.value = currentSettings.defaultDirectory || ''; // This line was removed
-            elements.model.value = currentSettings.model || 'llava';
+            
             elements.similarityThreshold.value = currentSettings.similarityThreshold || 0.8;
             elements.maxResults.value = currentSettings.maxResults || 10;
-            elements.minGroupSize.value = currentSettings.minGroupSize || 2;
+            
             
             // 更新显示值
             updateSimilarityValue();
@@ -139,10 +144,10 @@ async function saveSettings() {
     try {
         const settings = {
             // defaultDirectory: elements.defaultDirectory.value, // This line was removed
-            model: elements.model.value,
+            
             similarityThreshold: parseFloat(elements.similarityThreshold.value),
             maxResults: parseInt(elements.maxResults.value),
-            minGroupSize: parseInt(elements.minGroupSize.value)
+            
         };
         
         const result = await window.electronAPI.saveSettings(settings);
@@ -158,31 +163,7 @@ async function saveSettings() {
     }
 }
 
-// 检查服务
-async function checkService() {
-    try {
-        elements.checkServiceBtn.disabled = true;
-        elements.checkServiceBtn.textContent = '检查中...';
-        
-        const result = await window.electronAPI.checkOllamaService();
-        
-        if (result.success) {
-            if (result.available) {
-                showSuccess('Ollama 服务可用');
-            } else {
-                showWarning('Ollama 服务不可用，请确保已安装并运行 Ollama');
-            }
-        } else {
-            showError('检查服务失败: ' + result.message);
-        }
-    } catch (error) {
-        console.error('检查服务失败:', error);
-        showError('检查服务失败: ' + error.message);
-    } finally {
-        elements.checkServiceBtn.disabled = false;
-        elements.checkServiceBtn.textContent = '检查服务';
-    }
-}
+
 
 // 重置数据库
 async function resetDatabase() {
@@ -238,12 +219,44 @@ function updateSystemStatus(stats) {
                 <span class="status-value success">已初始化</span>
             </div>
             <div class="status-item">
+                <span class="status-label">模型名称:</span>
+                <span class="status-value">${stats.modelName}</span>
+            </div>
+            <div class="status-item">
                 <span class="status-label">已索引图片:</span>
                 <span class="status-value">${stats.vectorStore?.totalVectors || 0}</span>
             </div>
             <div class="status-item">
                 <span class="status-label">向量维度:</span>
                 <span class="status-value">${stats.vectorStore?.dimension || 0}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">数据库路径:</span>
+                <span class="status-value">${stats.vectorStore?.dbPath}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">索引文件大小:</span>
+                <span class="status-value">${formatFileSize(stats.vectorStore?.indexSize || 0)}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">元数据文件大小:</span>
+                <span class="status-value">${formatFileSize(stats.vectorStore?.metadataSize || 0)}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">最后修改时间:</span>
+                <span class="status-value">${stats.vectorStore?.lastModified ? new Date(stats.vectorStore.lastModified).toLocaleString() : 'N/A'}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">应用版本:</span>
+                <span class="status-value">${stats.appVersion}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Node.js 版本:</span>
+                <span class="status-value">${stats.nodeVersion}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Electron 版本:</span>
+                <span class="status-value">${stats.electronVersion}</span>
             </div>
             <div class="status-item">
                 <span class="status-label">支持格式:</span>
@@ -448,12 +461,12 @@ async function showIndexedImages() {
                     </div>
                 </div>`;
             });
-            elements.indexedImages.innerHTML = html;
+            elements.indexedImagesList.innerHTML = html;
         } else {
-            elements.indexedImages.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
+            elements.indexedImagesList.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
         }
     } catch (e) {
-        elements.indexedImages.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
+        elements.indexedImagesList.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
     }
 }
 

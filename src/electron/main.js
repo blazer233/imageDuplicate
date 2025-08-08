@@ -193,8 +193,16 @@ ipcMain.handle('find-similar-images', async (event, imagePath, maxResults, simil
 // 获取系统统计信息
 ipcMain.handle('get-stats', async () => {
     try {
-        const stats = imageDuplicateFinder.getStats();
-        return { success: true, stats };
+        const stats = await imageDuplicateFinder.getStats();
+        return { 
+            success: true, 
+            stats: {
+                ...stats,
+                appVersion: app.getVersion(),
+                nodeVersion: process.versions.node,
+                electronVersion: process.versions.electron,
+            }
+        };
     } catch (error) {
         return { 
             success: false, 
@@ -250,7 +258,7 @@ ipcMain.handle('load-settings', async () => {
             model: 'llava',
             similarityThreshold: 0.8,
             maxResults: 10,
-            minGroupSize: 2
+            
         });
         return { success: true, settings };
     } catch (error) {
