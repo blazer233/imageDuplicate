@@ -20,36 +20,13 @@ body {
     background: var(--beige-bg);
     color: var(--text-main);
     line-height: 1.6;
+    overflow: hidden; /* 隐藏滚动条 */
 }
 
 .container {
-    max-width: 1100px;
+    max-width: 800px; /* 缩小最大宽度 */
     margin: 0 auto;
-    padding: 24px;
-}
-
-.header {
-    text-align: center;
-    margin-bottom: 32px;
-    padding: 24px 0 16px 0;
-    background: var(--card-bg);
-    color: var(--brown-main);
-    border-bottom: 3px double var(--brown-light);
-    border-radius: 0 0 18px 18px;
-    box-shadow: 0 2px 8px #e5dcc2;
-}
-
-.header h1 {
-    font-size: 2.3rem;
-    font-family: 'Georgia', serif;
-    letter-spacing: 2px;
-    font-weight: bold;
-    margin-bottom: 8px;
-}
-
-.header p {
-    font-size: 1.1rem;
-    color: var(--text-light);
+    padding: 20px;
 }
 
 .nav {
@@ -57,18 +34,18 @@ body {
     background: var(--card-bg);
     border-radius: 12px;
     padding: 4px;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
     border: 1.5px solid var(--border);
     box-shadow: 0 1px 4px #e5dcc2;
 }
 
 .nav-btn {
     flex: 1;
-    padding: 14px 0;
+    padding: 12px 0; /* 缩小内边距 */
     border: none;
     background: transparent;
     color: var(--brown-main);
-    font-size: 1.08rem;
+    font-size: 1rem; /* 缩小字体大小 */
     font-family: 'Georgia', serif;
     cursor: pointer;
     border-radius: 8px;
@@ -84,7 +61,7 @@ body {
 }
 
 .main {
-    min-height: 500px;
+    min-height: auto; /* 移除最小高度 */
 }
 
 .tab-content {
@@ -98,43 +75,39 @@ body {
 .card {
     background: var(--card-bg);
     border-radius: 14px;
-    padding: 28px 24px 20px 24px;
-    margin-bottom: 22px;
+    padding: 24px; /* 统一内边距 */
+    margin-bottom: 20px;
     border: 1.5px solid var(--border);
     box-shadow: 0 2px 8px #e5dcc2;
 }
 
 .card h2 {
     color: var(--brown-dark);
-    margin-bottom: 18px;
-    font-size: 1.3rem;
-    font-family: 'Georgia', serif;
-    font-weight: bold;
+    margin-bottom: 16px;
+    font-size: 1.2rem;
 }
 
 .form-group {
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 7px;
+    margin-bottom: 6px;
     font-weight: 500;
     color: var(--brown-main);
-    font-family: 'Georgia', serif;
 }
 
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group select {
     width: 100%;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1.5px solid var(--input-border);
     border-radius: 7px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     background: var(--input-bg);
     color: var(--text-main);
-    font-family: 'Georgia', serif;
     transition: border-color 0.2s;
 }
 
@@ -155,14 +128,13 @@ body {
 }
 
 .input-group button {
-    padding: 10px 18px;
+    padding: 8px 16px;
     white-space: nowrap;
     background: var(--button-bg);
     color: #fff;
     border: none;
     border-radius: 7px;
-    font-family: 'Georgia', serif;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     transition: background 0.2s;
 }
@@ -173,16 +145,16 @@ body {
 
 .button-group {
     display: flex;
-    gap: 14px;
+    gap: 12px;
     flex-wrap: wrap;
-    margin-top: 18px;
+    margin-top: 16px;
 }
 
 button {
-    padding: 10px 22px;
+    padding: 8px 20px;
     border: none;
     border-radius: 7px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-family: 'Georgia', serif;
     font-weight: 500;
     cursor: pointer;
@@ -205,8 +177,8 @@ button.danger {
 }
 
 .progress-container {
-    margin-top: 18px;
-    padding: 16px;
+    margin-top: 16px;
+    padding: 14px;
     background: var(--input-bg);
     border-radius: 8px;
     border: 1.5px solid var(--border);
@@ -214,11 +186,11 @@ button.danger {
 
 .progress-bar {
     width: 100%;
-    height: 18px;
+    height: 16px;
     background-color: #e5dcc2;
     border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .progress-fill {
@@ -233,52 +205,52 @@ button.danger {
     font-weight: 500;
     color: var(--brown-main);
     margin-bottom: 4px;
+    font-size: 0.9rem;
 }
 
 #currentFile {
-    font-size: 0.92rem;
+    font-size: 0.85rem;
     color: var(--text-light);
     font-family: monospace;
 }
 
 .result-container {
-    margin-top: 14px;
-    padding: 16px;
+    margin-top: 12px;
+    padding: 14px;
     background: var(--input-bg);
     border-radius: 8px;
     border: 1.5px solid var(--border);
-    max-height: 400px;
+    max-height: 300px;
     overflow-y: auto;
 }
 
 .result-container h3 {
     color: var(--brown-dark);
-    margin-bottom: 12px;
-    font-size: 1.08rem;
+    margin-bottom: 10px;
+    font-size: 1rem;
 }
 
 .result-item {
     background: var(--card-bg);
-    padding: 10px 12px;
-    margin-bottom: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
     border-radius: 8px;
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .result-item h4 {
     color: var(--brown-main);
-    margin-bottom: 4px;
-    font-size: 1rem;
-    font-family: 'Georgia', serif;
+    margin-bottom: 2px;
+    font-size: 0.95rem;
 }
 
 .result-item p {
     color: var(--text-light);
-    font-size: 0.93rem;
-    margin-bottom: 3px;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
 }
 
 .result-item .similarity {
@@ -287,19 +259,19 @@ button.danger {
 }
 
 .result-item .actions {
-    margin-top: 8px;
+    margin-top: 6px;
     display: flex;
-    gap: 8px;
+    gap: 6px;
 }
 
 .result-item .actions button {
-    padding: 5px 10px;
-    font-size: 0.92rem;
+    padding: 4px 8px;
+    font-size: 0.85rem;
     border-radius: 5px;
 }
 
 #systemStatus {
-    padding: 12px;
+    padding: 10px;
     background: var(--input-bg);
     border-radius: 8px;
     border: 1.5px solid var(--border);
@@ -309,7 +281,7 @@ button.danger {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 0;
+    padding: 5px 0;
     border-bottom: 1px solid var(--border);
 }
 
@@ -320,10 +292,12 @@ button.danger {
 .status-label {
     font-weight: 500;
     color: var(--brown-main);
+    font-size: 0.9rem;
 }
 
 .status-value {
     color: var(--brown-dark);
+    font-size: 0.9rem;
 }
 
 .status-value.success {
@@ -350,28 +324,64 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: var(--brown-main);
     cursor: pointer;
 }
 
 input[type="range"]::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: var(--brown-main);
     cursor: pointer;
     border: none;
 }
 
+/* Modal Styles */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.4); 
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    margin: 15% auto; 
+    padding: 20px;
+    border: 1.5px solid var(--border);
+    width: 80%; 
+    max-width: 600px;
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.close-btn {
+    color: var(--text-light);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: var(--brown-dark);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
 @media (max-width: 768px) {
     .container {
         padding: 8px;
-    }
-    .header h1 {
-        font-size: 1.5rem;
     }
     .nav {
         flex-direction: column;
@@ -406,4 +416,4 @@ input[type="range"]::-moz-range-thumb {
 }
 ::-webkit-scrollbar-thumb:hover {
     background: #bfa07a;
-} 
+}

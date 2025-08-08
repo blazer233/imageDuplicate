@@ -8,14 +8,9 @@
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1>图片重复查找器</h1>
-            <p>基于AI模型的智能图片重复查找系统</p>
-        </header>
-
         <nav class="nav">
-          <button class="nav-btn" data-tab="search">查找相似图片</button>
           <button class="nav-btn active" data-tab="settings">设置与管理</button>
+          <button class="nav-btn" data-tab="search">查找相似图片</button>
         </nav>
 
         <main class="main">
@@ -34,6 +29,8 @@
                     </div>
                     <div class="button-group">
                         <button type="button" id="saveSettingsBtn">保存设置</button>
+                        <button type="button" id="showSystemStatusBtn">系统状态</button>
+                        <button type="button" id="showIndexedImagesBtn">查看已索引图片</button>
                     </div>
                 </div>
 
@@ -60,18 +57,6 @@
                     </div>
                     <div id="indexResult" class="result-container"></div>
                 </div>
-
-                <div class="card">
-                    <h2>系统状态</h2>
-                    <div id="systemStatus">
-                        <p>正在检查系统状态...</p>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h2>已索引图片列表</h2>
-                    <div id="indexedImagesList" class="result-container"></div>
-                </div>
             </div>
 
             <!-- 查找相似图片选项卡 -->
@@ -94,6 +79,24 @@
             </div>
         </main>
     </div>
+
+    <!-- 模态弹窗 -->
+    <div id="systemStatusModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>系统状态</h2>
+            <div id="systemStatus"></div>
+        </div>
+    </div>
+
+    <div id="indexedImagesModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>已索引图片列表</h2>
+            <div id="indexedImagesList" class="result-container"></div>
+        </div>
+    </div>
+
     <script src="renderer.js"></script>
 </body>
 </html>

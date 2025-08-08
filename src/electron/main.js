@@ -297,13 +297,8 @@ ipcMain.handle('open-file', async (event, filePath) => {
 
 ipcMain.handle('get-indexed-images', async () => {
     try {
-        const metaPath = path.join(__dirname, '../../vector_db/metadata.json');
-        if (fs.existsSync(metaPath)) {
-            const data = fs.readFileSync(metaPath, 'utf-8');
-            return { success: true, images: JSON.parse(data) };
-        } else {
-            return { success: true, images: [] };
-        }
+        const images = imageDuplicateFinder.vectorStore.metadata;
+        return { success: true, images };
     } catch (e) {
         return { success: false, message: e.message };
     }

@@ -96,7 +96,6 @@ class ImageProcessor {
       return {
         path: imagePath,
         filename: path.basename(imagePath),
-        size: stats.size,
         created: stats.birthtime,
         modified: stats.mtime,
       };

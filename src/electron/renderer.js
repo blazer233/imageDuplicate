@@ -13,6 +13,8 @@ const elements = {
     similarityValue: document.getElementById('similarityValue'),
     maxResults: document.getElementById('maxResults'),
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+    showSystemStatusBtn: document.getElementById('showSystemStatusBtn'),
+    showIndexedImagesBtn: document.getElementById('showIndexedImagesBtn'),
     indexDirectory: document.getElementById('indexDirectory'),
     selectIndexDirectoryBtn: document.getElementById('selectIndexDirectoryBtn'),
     startIndexBtn: document.getElementById('startIndexBtn'),
@@ -23,15 +25,20 @@ const elements = {
     progressText: document.getElementById('progressText'),
     currentFile: document.getElementById('currentFile'),
     indexResult: document.getElementById('indexResult'),
-    systemStatus: document.getElementById('systemStatus'),
-    indexedImagesList: document.getElementById('indexedImagesList'),
     
     // 搜索页面
     searchImage: document.getElementById('searchImage'),
     selectSearchImageBtn: document.getElementById('selectSearchImageBtn'),
     searchBtn: document.getElementById('searchBtn'),
     searchResult: document.getElementById('searchResult'),
-    selectedImagePreview: document.getElementById('selectedImagePreview')
+    selectedImagePreview: document.getElementById('selectedImagePreview'),
+
+    // 模态弹窗
+    systemStatusModal: document.getElementById('systemStatusModal'),
+    indexedImagesModal: document.getElementById('indexedImagesModal'),
+    systemStatus: document.getElementById('systemStatus'),
+    indexedImagesList: document.getElementById('indexedImagesList'),
+    closeBtns: document.querySelectorAll('.close-btn'),
 };
 
 // 初始化应用
@@ -46,12 +53,6 @@ async function initializeApp() {
         // 加载设置
         await loadSettings();
         
-        // 检查系统状态
-        await checkSystemStatus();
-        
-        // 显示已索引图片
-        await showIndexedImages();
-
         // 设置事件监听器
         setupEventListeners();
         
@@ -79,6 +80,8 @@ function setupEventListeners() {
     elements.startIndexBtn.addEventListener('click', startIndexing);
     elements.stopIndexBtn.addEventListener('click', stopIndexing);
     elements.resetDbBtn.addEventListener('click', resetDatabase);
+    elements.showSystemStatusBtn.addEventListener('click', showSystemStatus);
+    elements.showIndexedImagesBtn.addEventListener('click', showIndexedImages);
     
     // 搜索页面事件
     elements.selectSearchImageBtn.addEventListener('click', selectSearchImage);
@@ -86,6 +89,24 @@ function setupEventListeners() {
     
     // 监听索引进度
     window.electronAPI.onIndexProgress(handleIndexProgress);
+
+    // 模态弹窗关闭按钮
+    elements.closeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            elements.systemStatusModal.style.display = 'none';
+            elements.indexedImagesModal.style.display = 'none';
+        });
+    });
+
+    // 点击模态弹窗外部关闭
+    window.addEventListener('click', (event) => {
+        if (event.target == elements.systemStatusModal) {
+            elements.systemStatusModal.style.display = 'none';
+        }
+        if (event.target == elements.indexedImagesModal) {
+            elements.indexedImagesModal.style.display = 'none';
+        }
+    });
 }
 
 // 切换选项卡
@@ -157,8 +178,6 @@ async function resetDatabase() {
         const result = await window.electronAPI.resetDatabase();
         if (result.success) {
             showSuccess('数据库重置成功');
-            await checkSystemStatus();
-            await showIndexedImages(); // 在重置后刷新已索引图片
         } else {
             showError('重置数据库失败: ' + result.message);
         }
@@ -171,19 +190,20 @@ async function resetDatabase() {
     }
 }
 
-// 检查系统状态
-async function checkSystemStatus() {
+// 显示系统状态
+async function showSystemStatus() {
     try {
         const result = await window.electronAPI.getStats();
         if (result.success) {
             const stats = result.stats;
             updateSystemStatus(stats);
+            elements.systemStatusModal.style.display = 'block';
         } else {
-            updateSystemStatus({ initialized: false, message: result.message });
+            showError('获取系统状态失败: ' + result.message);
         }
     } catch (error) {
         console.error('获取系统状态失败:', error);
-        updateSystemStatus({ initialized: false, message: error.message });
+        showError('获取系统状态失败: ' + error.message);
     }
 }
 
@@ -292,8 +312,6 @@ async function startIndexing() {
         
         if (result.success) {
             showSuccess(`索引完成: ${result.message}`);
-            await checkSystemStatus();
-            await showIndexedImages(); // 在索引后刷新已索引图片
         } else {
             showError('索引失败: ' + result.message);
         }
@@ -403,8 +421,6 @@ function displaySearchResults(result) {
                     <div style="flex:1;">
                         <h4 style="margin-bottom:4px;">${item.metadata.filename}</h4>
                         <p>路径: ${item.metadata.path}</p>
-                        <p>大小: ${formatFileSize(item.metadata.size)}</p>
-                        <p>尺寸: ${item.metadata.width} × ${item.metadata.height}</p>
                         <p class="similarity">相似度: ${(item.similarity * 100).toFixed(2)}%</p>
                         <div class="actions">
                             <button onclick="openFile('${item.metadata.path}')">打开文件</button>
@@ -435,17 +451,16 @@ async function showIndexedImages() {
                     <div style="flex:1;">
                         <h4 style="margin-bottom:4px;">${item.filename}</h4>
                         <p>路径: ${item.path}</p>
-                        <p>大小: ${formatFileSize(item.size)}</p>
-                        <p>尺寸: ${item.width} × ${item.height}</p>
                     </div>
                 </div>`;
             });
             elements.indexedImagesList.innerHTML = html;
+            elements.indexedImagesModal.style.display = 'block';
         } else {
-            elements.indexedImagesList.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
+            showError('暂无已索引图片');
         }
     } catch (e) {
-        elements.indexedImagesList.innerHTML = '<span style="color:#888;">暂无已索引图片</span>';
+        showError('获取已索引图片失败: ' + e.message);
     }
 }
 
@@ -539,5 +554,4 @@ window.openFileLocation = async function(filePath) {
 // 启动应用
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
-    showIndexedImages();
 });

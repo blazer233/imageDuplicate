@@ -72,7 +72,7 @@ class ImageDuplicateFinder {
       // 添加到向量数据库
       await this.vectorStore.addVectors(vectors);
 
-      const stats = this.vectorStore.getStats();
+      const stats = await this.vectorStore.getStats();
 
       return {
         success: true,
