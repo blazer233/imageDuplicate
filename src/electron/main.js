@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const ImageDuplicateFinder = require('../imageDuplicateFinder');
-const fs = require('fs');
 
 // 创建配置存储
 const store = new Store();
