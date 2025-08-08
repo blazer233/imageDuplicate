@@ -8,28 +8,22 @@ const elements = {
     navBtns: document.querySelectorAll('.nav-btn'),
     tabContents: document.querySelectorAll('.tab-content'),
     
-    // 设置页面
-    
+    // 设置与管理页面
     similarityThreshold: document.getElementById('similarityThreshold'),
     similarityValue: document.getElementById('similarityValue'),
     maxResults: document.getElementById('maxResults'),
-    
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
-    
-    resetDbBtn: document.getElementById('resetDbBtn'),
-    systemStatus: document.getElementById('systemStatus'),
-    
-    // 索引页面
     indexDirectory: document.getElementById('indexDirectory'),
     selectIndexDirectoryBtn: document.getElementById('selectIndexDirectoryBtn'),
     startIndexBtn: document.getElementById('startIndexBtn'),
     stopIndexBtn: document.getElementById('stopIndexBtn'),
+    resetDbBtn: document.getElementById('resetDbBtn'),
     indexProgress: document.getElementById('indexProgress'),
     progressFill: document.getElementById('progressFill'),
     progressText: document.getElementById('progressText'),
     currentFile: document.getElementById('currentFile'),
     indexResult: document.getElementById('indexResult'),
-    indexedImages: document.getElementById('indexedImages'),
+    systemStatus: document.getElementById('systemStatus'),
     indexedImagesList: document.getElementById('indexedImagesList'),
     
     // 搜索页面
@@ -55,6 +49,9 @@ async function initializeApp() {
         // 检查系统状态
         await checkSystemStatus();
         
+        // 显示已索引图片
+        await showIndexedImages();
+
         // 设置事件监听器
         setupEventListeners();
         
@@ -75,22 +72,17 @@ function setupEventListeners() {
         });
     });
     
-    // 设置页面事件
+    // 设置与管理页面事件
     elements.similarityThreshold.addEventListener('input', updateSimilarityValue);
     elements.saveSettingsBtn.addEventListener('click', saveSettings);
-    
-    elements.resetDbBtn.addEventListener('click', resetDatabase);
-    
-    // 索引页面事件
     elements.selectIndexDirectoryBtn.addEventListener('click', selectIndexDirectory);
     elements.startIndexBtn.addEventListener('click', startIndexing);
     elements.stopIndexBtn.addEventListener('click', stopIndexing);
+    elements.resetDbBtn.addEventListener('click', resetDatabase);
     
     // 搜索页面事件
     elements.selectSearchImageBtn.addEventListener('click', selectSearchImage);
     elements.searchBtn.addEventListener('click', searchSimilarImages);
-    
-
     
     // 监听索引进度
     window.electronAPI.onIndexProgress(handleIndexProgress);
@@ -105,10 +97,6 @@ function switchTab(tabName) {
     // 添加活动状态
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(tabName).classList.add('active');
-
-    if (tabName === 'indexed-list') {
-        showIndexedImages();
-    }
 }
 
 // 加载设置
@@ -119,15 +107,11 @@ async function loadSettings() {
             currentSettings = result.settings;
             
             // 更新UI
-            // elements.defaultDirectory.value = currentSettings.defaultDirectory || ''; // This line was removed
-            
             elements.similarityThreshold.value = currentSettings.similarityThreshold || 0.8;
             elements.maxResults.value = currentSettings.maxResults || 10;
             
-            
             // 更新显示值
             updateSimilarityValue();
-            // updateDuplicateThresholdValue(); // This line was removed
             
             console.log('设置加载成功');
         } else {
@@ -143,11 +127,8 @@ async function loadSettings() {
 async function saveSettings() {
     try {
         const settings = {
-            // defaultDirectory: elements.defaultDirectory.value, // This line was removed
-            
             similarityThreshold: parseFloat(elements.similarityThreshold.value),
             maxResults: parseInt(elements.maxResults.value),
-            
         };
         
         const result = await window.electronAPI.saveSettings(settings);
@@ -162,8 +143,6 @@ async function saveSettings() {
         showError('保存设置失败: ' + error.message);
     }
 }
-
-
 
 // 重置数据库
 async function resetDatabase() {
@@ -561,4 +540,4 @@ window.openFileLocation = async function(filePath) {
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     showIndexedImages();
-}); 
+});
